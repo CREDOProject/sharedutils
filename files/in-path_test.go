@@ -2,6 +2,7 @@ package files
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -14,44 +15,52 @@ func looksLike(name string) bool {
 }
 
 func TestExecsInPath(t *testing.T) {
-	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
 
-	// Create some test files with different extensions
-	executableFiles := []string{"test1", "test2", "test3.exe", "test4", "test5.sh"}
-	for _, file := range executableFiles {
+	for _, file := range []string{"test0", "test1", "notacandidate"} {
 		filePath := filepath.Join(tmpDir, file)
-		os.Create(filePath)
-		if filepath.Ext(file) != ".exe" {
-			os.Chmod(filePath, 0755)
+		_, err := os.Create(filePath)
+		if err != nil {
+			t.Errorf("Got error creating file: %s", file)
+		}
+		err = os.Chmod(filePath, 0700)
+		if err != nil {
+			t.Errorf("Got error changing permission to file: %s", file)
 		}
 		defer os.Remove(filePath)
 	}
 
-	// Test when the directory doesn't exist
-	nonExistentDir := filepath.Join(tmpDir, "non-existent-dir")
-	res, err := ExecsInPath(nonExistentDir, looksLike)
-	if err != nil && res != nil {
-		t.Errorf("ExecsInPath(%s) returned error: %v, want nil", nonExistentDir, err)
-	}
+	test2 := "test2"
+	test2path := path.Join(tmpDir, test2)
+	os.Create(test2path)
+	defer os.Remove(test2path)
 
-	// Test when the directory is empty
-	emptyDir := t.TempDir()
-	execs, err := ExecsInPath(emptyDir, looksLike)
-	if err != nil {
-		t.Errorf("ExecsInPath(%s) returned error: %v, want nil", emptyDir, err)
-	}
-	if len(execs) != 0 {
-		t.Errorf("ExecsInPath(%s) returned %d executables, want 0", emptyDir, len(execs))
-	}
+	unreadablepath := path.Join(tmpDir, "unreadable")
+	os.Mkdir(unreadablepath, 0200)
 
-	// Test when the directory contains executable files
 	foundExecutables, err := ExecsInPath(tmpDir, looksLike)
 	if err != nil {
 		t.Errorf("ExecsInPath(%s) returned error: %v, want nil", tmpDir, err)
 	}
-	expectedExecutables := 3
+	expectedExecutables := 2
 	if len(foundExecutables) != expectedExecutables {
 		t.Errorf("ExecsInPath(%s) returned %d executables, want %d", tmpDir, len(foundExecutables), expectedExecutables)
+	}
+	// Testing without a dir
+	_, err = ExecsInPath(test2path, looksLike)
+	if err == nil {
+		t.Errorf("ExecsInPath(%s) has't returned error.", test2path)
+	}
+	// Testing unreadable path
+	_, err = ExecsInPath(unreadablepath, looksLike)
+	if err == nil {
+		t.Errorf("ExecsInPath(%s) has't returned error.", test2path)
+	}
+	test3path := path.Join(tmpDir, "test3")
+	os.Symlink("buh", test3path)
+
+	_, err = ExecsInPath(tmpDir, looksLike)
+	if err == nil {
+		t.Errorf("ExecsInPath(%s) has't returned error.", test2path)
 	}
 }
