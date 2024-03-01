@@ -35,10 +35,10 @@ func ExecsInPath(path string, lookalike func(string) bool) ([]string, error) {
 searchLoop:
 	for _, entry := range entries {
 		if entry.IsDir() || !lookalike(entry.Name()) {
-			continue
+			continue searchLoop
 		}
-
-		resolvedPath, err := filepath.EvalSymlinks(filepath.Join(path, entry.Name()))
+		entryPath := filepath.Join(path, entry.Name())
+		resolvedPath, err := filepath.EvalSymlinks(entryPath)
 		if err != nil {
 			return nil, err
 		}
