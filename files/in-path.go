@@ -32,10 +32,9 @@ func ExecsInPath(path string, lookalike func(string) bool) ([]string, error) {
 
 	var execs []string
 
-searchLoop:
 	for _, entry := range entries {
 		if entry.IsDir() || !lookalike(entry.Name()) {
-			continue searchLoop
+			continue
 		}
 		entryPath := filepath.Join(path, entry.Name())
 		resolvedPath, err := filepath.EvalSymlinks(entryPath)
@@ -47,7 +46,7 @@ searchLoop:
 			return nil, err
 		}
 		if !IsExecutable(info) {
-			continue searchLoop
+			continue
 		}
 		execs = append(execs, resolvedPath)
 	}
